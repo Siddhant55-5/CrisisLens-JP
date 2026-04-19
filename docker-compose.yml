@@ -1,0 +1,94 @@
+version: "3.9"
+
+services:
+  # ── TimescaleDB (PostgreSQL extension) ──────────────────────────
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: crisislens-timescaledb
+    environment:
+      POSTGRES_USER: ${DB_USER:-crisislens}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-crisislens_secret}
+      POSTGRES_DB: ${DB_NAME:-crisislens}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crisislens"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis ───────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: crisislens-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Backend (FastAPI) ───────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: crisislens-backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ml-models:/app/ml/saved_models
+    restart: unless-stopped
+
+  # ── MLflow Tracking Server ──────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.19.0
+    container_name: crisislens-mlflow
+    ports:
+      - "5001:5001"
+    volumes:
+      - mlflow-data:/mlflow
+    command: >
+      mlflow server
+        --host 0.0.0.0
+        --port 5001
+        --backend-store-uri sqlite:///mlflow/mlflow.db
+        --default-artifact-root /mlflow/artifacts
+    restart: unless-stopped
+
+  # ── InfluxDB (Alert History) ──────────────────────────────────────
+  influxdb:
+    image: influxdb:2
+    container_name: crisislens-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=crisislens_secret
+      - DOCKER_INFLUXDB_INIT_ORG=crisislens
+      - DOCKER_INFLUXDB_INIT_BUCKET=alerts
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=secret-token-crisislens
+      - INFLUXD_HTTP_BIND_ADDRESS=:8086
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  ml-models:
+  mlflow-data:
+  influxdb-data:
+  influxdb-config:

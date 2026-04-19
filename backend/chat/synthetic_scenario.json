@@ -1,0 +1,15 @@
+{
+  "banking_score": 58.0,
+  "banking_ci_lower": 52.0,
+  "banking_ci_upper": 65.0,
+  "market_score": 52.0,
+  "market_ci_lower": 45.0,
+  "market_ci_upper": 60.0,
+  "liquidity_score": 45.0,
+  "liquidity_ci_lower": 38.0,
+  "liquidity_ci_upper": 52.0,
+  "alert_summaries": "MEDIUM: Banking instability moderately elevated at 58.0 [52–65]. Key driver: HY spread widening (+2.1σ above 20D mean). Historical analog: Early stages of SVB crisis March 2023 (55% similarity).",
+  "shap_signals": "hy_spread_z5d (+0.32), vix_z5d (+0.28), libor_ois_z (+0.24), t10y2y_slope (-0.18), ted_spread (+0.15)",
+  "regime_status": "Elevated — avg |ρ| = 0.52. Correlations rising from 0.38 over past 5 sessions. Not yet at stress threshold (0.65). Monitor equity–credit correlation convergence.",
+  "quality_summary": "SIMULATION MODE — No live data available. This is a pre-built scenario representing a medium-severity banking stress environment."
+}
